@@ -18,7 +18,7 @@ split.hs
 When monitoring traffic from a given set of ip addresses, we can
 capture the data as follows:
 
-tcpdump -i eth? -nn -w cfm-dump -W 10 -C 100 host ...
+tcpdump -i eth? -nn -w dump -W 10 -C 100 host ...
 
 and collect all the files that result.
 
