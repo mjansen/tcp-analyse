@@ -360,8 +360,13 @@ stats xa = TCPStats (ConnectionDuration . duration $ xa) (speed xa) (volume xa) 
 
 {--}
 
-retransmissions :: Array Int TCPPacket -> Integer
-retransmissions xa =
+nrOfPackets :: Array Int TCPPacket -> Integer
+nrOfPackets xa =
+  let (a, b) = bounds xa
+  in toInteger (b - a) + 1
+
+retransmissions2 :: Array Int TCPPacket -> Integer
+retransmissions2 xa =
   let (a, b) = bounds xa
       inPacket i (TCPPacket _ sn _ _ _ _ _ _ len _) = let sn' = fromEnum sn in sn' <= i && i < sn' + len 
       hasStartPoint xa sn i | i < a = False
@@ -374,5 +379,26 @@ retransmissions xa =
                                          then countRetrans (i - 1) (total + 1)
                                          else countRetrans (i - 1) total
   in countRetrans b 0
+
+retransmissions :: Array Int TCPPacket -> Integer
+retransmissions xa =
+  let (a, b) = bounds xa
+      inPacket i (TCPPacket _ sn _ _ _ _ _ _ len _) = let sn' = fromEnum sn in sn' <= i && i < sn' + len 
+      hasStartPoint xa sn i | i < a = False
+      hasStartPoint xa sn i | sn `inPacket` (xa ! i) = True
+                            | otherwise              = hasStartPoint xa sn (i - 1)
+      countRetrans i maxSofar total | i == b = total
+                                    | i >= a  && i < b =
+        let sn  = PreprocessPcap.seqNumber (xa ! i)
+            ln  = len (xa ! i)
+            sn' = fromEnum sn
+        in if ln == 0
+           then countRetrans (i + 1) sn' total
+           else if sn' > maxSofar
+                then countRetrans (i + 1) sn' total
+                else if hasStartPoint xa sn' (i - 1)
+                     then countRetrans (i + 1) maxSofar (total + 1)
+                     else countRetrans (i + 1) maxSofar  total
+  in countRetrans a 0 0
 
 {--}
