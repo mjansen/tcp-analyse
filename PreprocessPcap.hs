@@ -357,3 +357,22 @@ data TCPStats = TCPStats
 
 stats :: Array Int TCPPacket -> TCPStats
 stats xa = TCPStats (ConnectionDuration . duration $ xa) (speed xa) (volume xa) (lastFlags xa) (startTime xa) (endTime xa)
+
+{--}
+
+retransmissions :: Array Int TCPPacket -> Integer
+retransmissions xa =
+  let (a, b) = bounds xa
+      inPacket i (TCPPacket _ sn _ _ _ _ _ _ len _) = let sn' = fromEnum sn in sn' <= i && i < sn' + len 
+      hasStartPoint xa sn i | i < a = False
+      hasStartPoint xa sn i | sn `inPacket` (xa ! i) = True
+                            | otherwise              = hasStartPoint xa sn (i - 1)
+      countRetrans i total | i == a = total
+                           | i > a  = let sn = PreprocessPcap.seqNumber (xa ! i)
+                                          ln = len       (xa ! i)
+                                      in if hasStartPoint xa (fromEnum sn) (i - 1)
+                                         then countRetrans (i - 1) (total + 1)
+                                         else countRetrans (i - 1) total
+  in countRetrans b 0
+
+{--}
