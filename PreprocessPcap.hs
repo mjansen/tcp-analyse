@@ -20,6 +20,7 @@ import Data.Word
 import Data.List (sort)
 import Data.Maybe
 import Data.Either
+import Data.Time
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -301,6 +302,20 @@ duration xa =
       tMax = tUseconds $ xa ! b
   in toInteger $ tMax - tMin
      
+startTime :: Array Int TCPPacket -> UTCTime
+startTime xa =
+  let (a, b) = bounds xa
+      tMin = tUseconds $ xa ! a
+      epoch = UTCTime (fromGregorian 1970 1 1) 0
+  in (`addUTCTime` epoch) . fromInteger . toInteger $ tMin
+
+endTime :: Array Int TCPPacket -> UTCTime
+endTime xa =
+  let (a, b) = bounds xa
+      tMax = tUseconds $ xa ! b
+      epoch = UTCTime (fromGregorian 1970 1 1) 0
+  in (`addUTCTime` epoch) . fromInteger . toInteger $ tMax
+
 volume :: Array Int TCPPacket -> Integer
 volume xa =
   let (a, b) = bounds xa
@@ -336,7 +351,9 @@ data TCPStats = TCPStats
   , s_speed     :: Integer
   , s_volume    :: Integer
   , s_lastFlags :: [TCPFlag]
+  , s_startTime :: UTCTime
+  , s_endTime   :: UTCTime
   } deriving (Eq, Ord, Show, Read, Generic)
 
 stats :: Array Int TCPPacket -> TCPStats
-stats xa = TCPStats (ConnectionDuration . duration $ xa) (speed xa) (volume xa) (lastFlags xa)
+stats xa = TCPStats (ConnectionDuration . duration $ xa) (speed xa) (volume xa) (lastFlags xa) (startTime xa) (endTime xa)
